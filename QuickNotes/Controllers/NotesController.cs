@@ -1,5 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
+﻿using AutoMapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using QuickNotes.Data;
@@ -15,42 +15,42 @@ namespace QuickNotes.Controllers
     public class NotesController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly IMapper _mapper;
 
-        public NotesController(AppDbContext context)
+        public NotesController(AppDbContext context, IMapper mapper)
         {
             _context = context;
+            _mapper = mapper;
         }
 
         // GET: api/notes
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Note>>> GetUserNotes()
+        public async Task<ActionResult<IEnumerable<NoteDto>>> GetUserNotes()
         {
             int userId = GetUserId();
+
             var notes = await _context.Notes
                 .Where(n => n.UserId == userId)
                 .ToListAsync();
 
-            return Ok(notes);
+            var noteDtos = _mapper.Map<List<NoteDto>>(notes);
+            return Ok(noteDtos);
         }
 
         // POST: api/notes
         [HttpPost]
-        public async Task<IActionResult> CreateNote(NoteDto request)
+        public async Task<ActionResult<NoteDto>> CreateNote(NoteDto request)
         {
             int userId = GetUserId();
 
-            var note = new Note
-            {
-                Title = request.Title,
-                Content = request.Content,
-                UserId = userId,
-                CreatedAt = DateTime.UtcNow
-            };
+            var note = _mapper.Map<Note>(request);
+            note.UserId = userId;
+            note.CreatedAt = DateTime.UtcNow;
 
             _context.Notes.Add(note);
             await _context.SaveChangesAsync();
 
-            return Ok(note);
+            return Ok(_mapper.Map<NoteDto>(note));
         }
 
         // PUT: api/notes/{id}
@@ -58,14 +58,17 @@ namespace QuickNotes.Controllers
         public async Task<IActionResult> UpdateNote(int id, NoteDto request)
         {
             int userId = GetUserId();
-            var note = await _context.Notes.FirstOrDefaultAsync(n => n.Id == id && n.UserId == userId);
-            if (note == null) return NotFound();
 
-            note.Title = request.Title;
-            note.Content = request.Content;
+            var note = await _context.Notes
+                .FirstOrDefaultAsync(n => n.Id == id && n.UserId == userId);
+
+            if (note == null)
+                return NotFound();
+
+            _mapper.Map(request, note); // Only maps Title & Content
             await _context.SaveChangesAsync();
 
-            return Ok(note);
+            return Ok(_mapper.Map<NoteDto>(note));
         }
 
         // DELETE: api/notes/{id}
@@ -73,8 +76,12 @@ namespace QuickNotes.Controllers
         public async Task<IActionResult> DeleteNote(int id)
         {
             int userId = GetUserId();
-            var note = await _context.Notes.FirstOrDefaultAsync(n => n.Id == id && n.UserId == userId);
-            if (note == null) return NotFound();
+
+            var note = await _context.Notes
+                .FirstOrDefaultAsync(n => n.Id == id && n.UserId == userId);
+
+            if (note == null)
+                return NotFound();
 
             _context.Notes.Remove(note);
             await _context.SaveChangesAsync();

@@ -1,0 +1,6 @@
+@QuickNotes_HostAddress = http://localhost:5259
+
+GET {{QuickNotes_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

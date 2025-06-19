@@ -38,6 +38,16 @@ namespace QuickNotes
             ValidateAudience = false
         };
     });
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowAngularApp", policy =>
+                {
+                    policy.AllowAnyOrigin()
+                          .AllowAnyHeader()
+                          .AllowAnyMethod();
+                });
+            });
+
 
             // This is the correct Swagger registration using Swashbuckle
             builder.Services.AddSwaggerGen(options =>
@@ -66,6 +76,9 @@ namespace QuickNotes
                     options.RoutePrefix = string.Empty; // Swagger at root
                 });
             }
+
+            app.UseCors("AllowAngularApp");
+
 
             app.UseHttpsRedirection();
 
